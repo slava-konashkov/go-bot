@@ -4,10 +4,13 @@ REGISTRY := sundrop
 VERSION_FILE=VERSION
 VERSION=$(shell cat $(VERSION_FILE))-$(shell git rev-parse --short HEAD)
 # VERSION=$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
-TARGETOS=linux #linux darwin windows
-TARGETARCH=amd64 #amd64 arm64
+TARGETOS=darwin #linux darwin windows
+TARGETARCH=arm64 #amd64 arm64
 
-f_build = CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -v -o go-bot -ldflags "-X="github.com/burylo/kbot/cmd.appVersion=${VERSION}
+define f_build
+	CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -v -o go-bot -ldflags "-X="github.com/burylo/kbot/cmd.appVersion=${VERSION}
+	docker build . -t ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}  --build-arg TARGETARCH=${TARGETARCH}
+endef
 
 format:
 	gofmt -s -w ./
@@ -22,8 +25,7 @@ get:
 	go get
 
 build: format get bump-version
-	@$(eval VERSION=$(shell cat $(VERSION_FILE)))
-	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o go-bot -ldflags "-X="go-bot/cmd.appVersion=v$(VERSION)
+	CGO_ENABLED=0 GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v -o go-bot -ldflags "-X="github.com/burylo/kbot/cmd.appVersion=${VERSION}
 
 image:
 	docker build . -t ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}  --build-arg TARGETARCH=${TARGETARCH}
@@ -39,6 +41,9 @@ ver:
 
 linux: format get
 	$(call f_build,linux,amd64)
+
+arm: format get
+	$(call f_build,linux,arm64)
 
 macos: format get
 	$(call f_build,darwin,arm64)
